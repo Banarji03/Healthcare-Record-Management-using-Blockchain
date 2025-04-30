@@ -21,7 +21,7 @@ A decentralized application (DApp) for secure management of patient medical reco
 1. **Clone the repository**
    ```bash
    git clone [repository-url]
-   cd ethereum-patient-data-management-system
+   cd filename
    ```
 
 2. **Install dependencies**
