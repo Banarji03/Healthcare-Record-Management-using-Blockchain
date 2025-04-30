@@ -1,4 +1,4 @@
-export const SAVE_DATA_LIST_ADDRESS = "0x8Bb31c0B47B0e739D726665E2cFB1947fEbC725c";
+export const SAVE_DATA_LIST_ADDRESS = "0x297089a7C662fccDc81C1EF1962Dd18205c11CA9";
 export const SAVE_DATA_LIST_ABI = [
   {
     "constant": true,

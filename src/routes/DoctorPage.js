@@ -94,6 +94,11 @@ export default function DoctorPage({
         return;
       }
       
+      // Check if contract is ready
+      if (!doctorAccessContract) {
+        throw new Error('Contract not initialized. Please check your connection to MetaMask');
+      }
+      
       await addDoctor();
       alert('Doctor registered successfully!');
     } catch (error) {
@@ -199,6 +204,7 @@ export default function DoctorPage({
     </Container>
   );
 }
+
 
 
 

@@ -1,4 +1,4 @@
-export const DOCTOR_ACCESS_ADDRESS = "0xB0Fd7CD6e4837d502c3eAaedc5432b9CE9Fe2AE0";
+export const DOCTOR_ACCESS_ADDRESS = "0xE23128765ABca53dECe007b33e983934739b9E26";
 
 // Verify these events are in your ABI
 export const DOCTOR_ACCESS_ABI = [

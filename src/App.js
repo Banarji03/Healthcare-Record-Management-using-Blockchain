@@ -77,6 +77,15 @@ function App() {
     diseaseStartedOn: '2024-04-01', // Changed to ISO format YYYY-MM-DD
   });
 
+  const checkContractsInitialized = () => {
+    if (!patientDataContract || !saveDataContract || !doctorDataContract || !doctorAccessContract) {
+      throw new Error('Contracts not initialized. Please check your connection to MetaMask');
+    }
+  };
+
+  // Add loading state
+  const [isInitialized, setIsInitialized] = useState(false);
+
   useEffect(() => {
     const initializeWeb3 = async () => {
       try {
@@ -89,15 +98,37 @@ function App() {
           const accounts = await web3Instance.eth.getAccounts();
           setAccount(accounts[0]);
 
-          // Initialize PatientData contract
+          // Initialize all contracts
           const patientDataContractInstance = new web3Instance.eth.Contract(
             PATIENT_DATA_LIST_ABI,
             PATIENT_DATA_LIST_ADDRESS
           );
-          setPatientDataContract(patientDataContractInstance);
 
-          // Initialize other contracts...
-          
+          const saveDataContractInstance = new web3Instance.eth.Contract(
+            SAVE_DATA_LIST_ABI,
+            SAVE_DATA_LIST_ADDRESS
+          );
+
+          const doctorDataContractInstance = new web3Instance.eth.Contract(
+            DOCTOR_DATA_ABI,
+            DOCTOR_DATA_ADDRESS
+          );
+
+          const doctorAccessContractInstance = new web3Instance.eth.Contract(
+            DOCTOR_ACCESS_ABI,
+            DOCTOR_ACCESS_ADDRESS
+          );
+
+          // Set all contracts in state
+          setPatientDataContract(patientDataContractInstance);
+          setSaveDataContract(saveDataContractInstance);
+          setDoctorDataContract(doctorDataContractInstance);
+          setDoctorAccessContract(doctorAccessContractInstance);
+
+          // Mark initialization as complete
+          setIsInitialized(true);
+          console.log('All contracts initialized successfully');
+
         } else {
           alert('Please install MetaMask to use this application');
         }
@@ -108,38 +139,65 @@ function App() {
     };
 
     initializeWeb3();
-  }, []);
+  }, []); // Empty dependency array for initial setup only
 
+  // Separate useEffect for data fetching
   useEffect(() => {
-    if (patientDataContract && account) {
-      updateList(patientDataContract, account);
-    }
-  }, [patientDataContract, account]);
+    const fetchData = async () => {
+      try {
+        if (!isInitialized || !patientDataContract || !account) {
+          console.log('Waiting for initialization...');
+          return;
+        }
+
+        console.log('Starting data fetch...');
+        await updateList(patientDataContract, account);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+
+    fetchData();
+  }, [isInitialized, patientDataContract, account]);
 
   const updateList = async (patientDataContract, acc) => {
     try {
-      if (!patientDataContract || !acc) {
-        console.error('Contract or account not initialized');
+      if (!patientDataContract?.methods || !acc) {
+        console.log('Contract or account not ready');
         return;
       }
 
-      // Get sender info
-      const senders = await patientDataContract.methods.senders(acc).call();
-      const patientCount = parseInt(senders.patientCount);
+      console.log('Fetching senders data for account:', acc);
       
-      let patientBioMedList = [];
+      // Add explicit error handling for contract calls
+      let senders;
+      try {
+        senders = await patientDataContract.methods.senders(acc).call();
+        console.log('Senders data:', senders);
+      } catch (error) {
+        console.error('Error fetching senders:', error);
+        return;
+      }
 
-      // Fetch data for each patient
+      if (!senders || !senders.patientCount) {
+        console.log('No patient data found for this account');
+        setPatientBioMedList([]);
+        return;
+      }
+
+      const patientCount = parseInt(senders.patientCount);
+      let newPatientBioMedList = [];
+
       for (let i = 0; i < patientCount; i++) {
         try {
-          // Get patient bio data
+          console.log(`Fetching patient data for index ${i}`);
           const patientData = await patientDataContract.methods.getPatientsList(i).call({ from: acc });
-          
-          // Get medical report data
-          const medicalReport = await patientDataContract.methods.medicalReports(patientData[4]).call();
+          console.log(`Patient data for index ${i}:`, patientData);
 
-          // Combine the data
-          patientBioMedList.push({
+          const medicalReport = await patientDataContract.methods.medicalReports(patientData[4]).call();
+          console.log(`Medical report for index ${i}:`, medicalReport);
+
+          newPatientBioMedList.push({
             name: patientData[0],
             birthDate: patientData[1],
             phoneNumber: patientData[2],
@@ -152,14 +210,14 @@ function App() {
             diseaseStartedOn: medicalReport.diseaseStartedOn
           });
         } catch (error) {
-          console.error(`Error fetching patient ${i}:`, error);
+          console.error(`Error fetching data for patient ${i}:`, error);
         }
       }
 
-      console.log('Retrieved patient data:', patientBioMedList);
-      setPatientBioMedList(patientBioMedList);
+      console.log('Setting patient data:', newPatientBioMedList);
+      setPatientBioMedList(newPatientBioMedList);
     } catch (error) {
-      console.error('Error updating list:', error);
+      console.error('Error in updateList:', error);
     }
   };
 
@@ -254,6 +312,10 @@ function App() {
   };
 
   const addDoctor = async () => {
+    if (!doctorDataContract) {
+      throw new Error('Doctor contract not initialized');
+    }
+    
     await doctorDataContract.methods
       .addDoctor(doctor.name, doctor.specialization, doctor.hospital)
       .send({ from: account });
